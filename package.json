@@ -11,6 +11,7 @@
   "dependencies": {
     "@chakra-ui/react": "^3.2.5",
     "@emotion/react": "^11.14.0",
+    "@guildxyz/sdk": "^2.6.9",
     "@hatsprotocol/sdk-v1-core": "^0.10.0",
     "@hatsprotocol/sdk-v1-subgraph": "^1.0.0",
     "@rainbow-me/rainbowkit": "^2.2.1",
