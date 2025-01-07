@@ -1,10 +1,9 @@
 import Head from "next/head";
-import { Box, Group, HStack, Text } from "@chakra-ui/react";
-import Image from "next/image";
+import { Box, Group, Input, Text } from "@chakra-ui/react";
 import { useAccount } from "wagmi";
 
-import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import {
   StepsCompletedContent,
   StepsContent,
@@ -14,6 +13,7 @@ import {
   StepsPrevTrigger,
   StepsRoot,
 } from "@/components/ui/steps";
+import { Header } from "@/components/Header";
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -30,34 +30,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
-        <Box
-          alignItems="center"
-          as="header"
-          bgColor="white"
-          boxShadow="0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1)"
-          display="flex"
-          h="75px"
-          justifyContent="space-between"
-          px={6}
-        >
-          <Image
-            alt="Hats Protocol Logo"
-            height={65}
-            src="/hats_icon.jpeg"
-            width={65}
-          />
-          <HStack>
-            <Text
-              border="1px solid #e4e4e7"
-              borderRadius="0.25rem"
-              p={3}
-              fontSize="xs"
-            >
-              Sepolia
-            </Text>
-            <ConnectWalletButton />
-          </HStack>
-        </Box>
+        <Header />
         <Box
           justifyContent="center"
           bgColor="#ffffff80"
@@ -74,7 +47,25 @@ export default function Home() {
                 <StepsItem index={2} title="Add Bot" />
                 <StepsItem index={3} title="Create Role" />
               </StepsList>
-              <StepsContent index={0}>Select Hat</StepsContent>
+              <StepsContent index={0} spaceY={4}>
+                <Text>
+                  Please paste the hat ID of the tree you would like to connect
+                  with Discord. The hat must be minted on the Sepolia test
+                  network, and you must be the owner of the tree&apos;s top hat.
+                </Text>
+                <Box spaceY={2}>
+                  <Field
+                    label="Hat ID"
+                    invalid={false}
+                    errorText="This is error text"
+                  >
+                    <Input />
+                  </Field>
+                  <Button variant="outline" size="sm">
+                    Search
+                  </Button>
+                </Box>
+              </StepsContent>
               <StepsContent index={1}>Install Discord-gating</StepsContent>
               <StepsContent index={2}>Add Bot</StepsContent>
               <StepsContent index={3}>Create Role</StepsContent>
