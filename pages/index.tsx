@@ -1,7 +1,7 @@
 import Head from "next/head";
-import { Box } from "@chakra-ui/react";
+import { Box, HStack, Text } from "@chakra-ui/react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
+import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 
 export default function Home() {
   return (
@@ -29,9 +29,17 @@ export default function Home() {
             src="/hats_icon.jpeg"
             width={65}
           />
-          <Button fontWeight={600} size="lg" variant="outline">
-            Connect Wallet
-          </Button>
+          <HStack>
+            <Text
+              border="1px solid #e4e4e7"
+              borderRadius="0.25rem"
+              p={3}
+              fontSize="xs"
+            >
+              Sepolia
+            </Text>
+            <ConnectWalletButton />
+          </HStack>
         </Box>
         <p>Hats Protocol Discord Gating</p>
       </main>
