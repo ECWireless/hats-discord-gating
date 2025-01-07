@@ -1,7 +1,13 @@
 import Head from "next/head";
 import { Box, Group, Input, Text } from "@chakra-ui/react";
 import { useAccount } from "wagmi";
+import {
+  DEFAULT_ENDPOINTS_CONFIG,
+  HatsSubgraphClient,
+} from "@hatsprotocol/sdk-v1-subgraph";
+import { sepolia } from "wagmi/chains";
 
+import { Toaster, toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import {
@@ -14,9 +20,50 @@ import {
   StepsRoot,
 } from "@/components/ui/steps";
 import { Header } from "@/components/Header";
+import { useCallback, useState } from "react";
 
 export default function Home() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
+  const [hatId, setHatId] = useState<string>("");
+
+  const onSearch = useCallback(async () => {
+    try {
+      if (!address) {
+        throw new Error("Wallet not connected");
+      }
+
+      const hatsSubgraphClient = new HatsSubgraphClient({
+        config: DEFAULT_ENDPOINTS_CONFIG,
+      });
+
+      const hat = await hatsSubgraphClient.getHat({
+        chainId: sepolia.id,
+        hatId: BigInt(hatId),
+        props: {
+          status: true,
+          details: true,
+          imageUri: true,
+          admin: {
+            wearers: {
+              props: {},
+            },
+          },
+        },
+      });
+
+      const adminWearers = hat.admin?.wearers?.map((wearer) => wearer.id);
+
+      if (!adminWearers?.includes(address)) {
+        throw new Error("You are not a wearer of this tree's top hat");
+      }
+    } catch (e) {
+      console.error(e as Error);
+      toaster.create({
+        description: (e as Error).message,
+        type: "error",
+      });
+    }
+  }, [address, hatId]);
 
   return (
     <>
@@ -59,9 +106,12 @@ export default function Home() {
                     invalid={false}
                     errorText="This is error text"
                   >
-                    <Input />
+                    <Input
+                      onChange={(e) => setHatId(e.target.value)}
+                      value={hatId}
+                    />
                   </Field>
-                  <Button variant="outline" size="sm">
+                  <Button onClick={onSearch} size="sm" variant="outline">
                     Search
                   </Button>
                 </Box>
@@ -87,6 +137,7 @@ export default function Home() {
             <Text fontSize="lg">Please connect your wallet to continue</Text>
           )}
         </Box>
+        <Toaster />
       </main>
     </>
   );
