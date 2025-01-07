@@ -1,4 +1,7 @@
 import Head from "next/head";
+import { Box } from "@chakra-ui/react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
@@ -9,11 +12,29 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <div>
-        <main>
-          <p>Hats Protocol Discord Gating</p>
-        </main>
-      </div>
+      <main>
+        <Box
+          alignItems="center"
+          as="header"
+          bgColor="white"
+          boxShadow="0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1)"
+          display="flex"
+          h="75px"
+          justifyContent="space-between"
+          px={6}
+        >
+          <Image
+            alt="Hats Protocol Logo"
+            height={65}
+            src="/hats_icon.jpeg"
+            width={65}
+          />
+          <Button fontWeight={600} size="lg" variant="outline">
+            Connect Wallet
+          </Button>
+        </Box>
+        <p>Hats Protocol Discord Gating</p>
+      </main>
     </>
   );
 }
