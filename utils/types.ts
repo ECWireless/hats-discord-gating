@@ -7,8 +7,12 @@ export type GuildDetails = {
 };
 
 export type HatDetails = {
+  decimalId: bigint;
+  description: string;
   imageUrl: string;
   ipId: string;
   name: string;
+  topHatDescription: string;
+  topHatName: string;
   wearers: string[];
 };

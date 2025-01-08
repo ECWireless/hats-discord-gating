@@ -15,7 +15,7 @@ import {
   DEFAULT_ENDPOINTS_CONFIG,
   HatsSubgraphClient,
 } from "@hatsprotocol/sdk-v1-subgraph";
-import { hatIdDecimalToIp } from "@hatsprotocol/sdk-v1-core";
+import { hatIdDecimalToIp, hatIdHexToDecimal } from "@hatsprotocol/sdk-v1-core";
 import { sepolia } from "wagmi/chains";
 import { FaExternalLinkAlt } from "react-icons/fa";
 
@@ -76,6 +76,7 @@ export default function Home() {
         hatId: BigInt(hatId),
         props: {
           admin: {
+            details: true,
             wearers: {
               props: {},
             },
@@ -89,8 +90,22 @@ export default function Home() {
       });
 
       const hatImageUrl = hat.imageUri ? uriToHttp(hat.imageUri)[0] : "";
-      const hatDetailsUrl = hat.details ? uriToHttp(hat.details)[0] : "";
-      const details = await fetch(hatDetailsUrl).then((res) => res.json());
+
+      const adminDetailsUrl = hat.admin?.details
+        ? uriToHttp(hat.admin?.details)[0]
+        : "";
+      const subHatDetailsUrl = hat.details ? uriToHttp(hat.details)[0] : "";
+
+      if (!adminDetailsUrl || !subHatDetailsUrl) {
+        throw new Error("Invalid hat details");
+      }
+
+      const adminHatDetails = await fetch(adminDetailsUrl).then((res) =>
+        res.json()
+      );
+      const subHatDetails = await fetch(subHatDetailsUrl).then((res) =>
+        res.json()
+      );
 
       const adminWearers = hat.admin?.wearers?.map((wearer) => wearer.id);
 
@@ -99,9 +114,13 @@ export default function Home() {
       }
 
       const _hatDetails = {
+        decimalId: hatIdHexToDecimal(hat.id),
+        description: subHatDetails.data.description,
         imageUrl: hatImageUrl,
         ipId: hatIdDecimalToIp(BigInt(hatId)),
-        name: details.data.name,
+        name: subHatDetails.data.name,
+        topHatDescription: adminHatDetails.data.description,
+        topHatName: adminHatDetails.data.name,
         wearers: hat.wearers?.map((wearer) => wearer.id) || [],
       };
       setHatDetails(_hatDetails);
@@ -128,6 +147,10 @@ export default function Home() {
         throw new Error("Please enter a valid server ID and invite channel ID");
       }
 
+      if (!hatDetails) {
+        throw new Error("Please select a hat first");
+      }
+
       const guildClient = createGuildClient("Hats Protocol Discord Gating");
       const signerFunction = createSigner.custom(
         (message) => signMessageAsync({ message }),
@@ -136,9 +159,9 @@ export default function Home() {
 
       const myGuild = await guildClient.guild.create(
         {
-          name: "Test Hats Guild",
-          urlName: "test-hats-guild",
-          description: "Cool stuff",
+          name: hatDetails.topHatName,
+          urlName: hatDetails.topHatName.toLowerCase().replace(/\s+/g, "-"),
+          description: hatDetails.topHatDescription,
           showMembers: true,
           hideFromExplorer: false,
           guildPlatforms: [
@@ -150,8 +173,22 @@ export default function Home() {
           ],
           roles: [
             {
-              name: "My new role",
+              name: "Basic Member",
               requirements: [{ type: "FREE" }],
+            },
+            {
+              name: hatDetails.name,
+              description: hatDetails.description,
+              requirements: [
+                {
+                  address: "0x3bc1a0ad72417f2d411118085256fc53cbddd137",
+                  chain: "SEPOLIA",
+                  data: {
+                    ids: [hatDetails.decimalId.toString()],
+                  },
+                  type: "ERC1155",
+                },
+              ],
             },
           ],
           contacts: [],
@@ -188,7 +225,7 @@ export default function Home() {
     } finally {
       setIsCreatingGuild(false);
     }
-  }, [address, serverId, inviteChannelId, signMessageAsync]);
+  }, [address, hatDetails, inviteChannelId, serverId, signMessageAsync]);
 
   const isStepDisabled = useMemo(() => {
     if (step === 0) {
@@ -400,7 +437,7 @@ export default function Home() {
                         a second message to join the guild.
                       </Text>
                     </VStack>
-                    <VStack spaceY={2}>
+                    <VStack pb={16} spaceY={2}>
                       <Field
                         label="Server ID"
                         invalid={false}
