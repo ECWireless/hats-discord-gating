@@ -20,6 +20,8 @@ import {
   hatIdDecimalToIp,
   hatIdHexToDecimal,
   HatsClient,
+  treeIdHexToDecimal,
+  treeIdToTopHatId,
 } from "@hatsprotocol/sdk-v1-core";
 import { sepolia } from "wagmi/chains";
 import { FaExternalLinkAlt, FaCheckCircle } from "react-icons/fa";
@@ -123,12 +125,7 @@ export default function Home() {
         chainId: sepolia.id,
         hatId: BigInt(hatId),
         props: {
-          admin: {
-            details: true,
-            wearers: {
-              props: {},
-            },
-          },
+          tree: {},
           details: true,
           imageUri: true,
           wearers: {
@@ -137,31 +134,45 @@ export default function Home() {
         },
       });
 
-      if (!hat.admin) {
-        throw new Error("Invalid hat admin");
+      if (!hat.tree) {
+        throw new Error("Invalid tree");
       }
+
+      const treeId = treeIdHexToDecimal(hat.tree.id);
+      const topHatId = treeIdToTopHatId(treeId);
+
+      const topHat = await hatsSubgraphClient.getHat({
+        chainId: sepolia.id,
+        hatId: topHatId,
+        props: {
+          details: true,
+          wearers: {
+            props: {},
+          },
+        },
+      });
 
       const hatImageUrl = hat.imageUri ? uriToHttp(hat.imageUri)[0] : "";
 
-      const adminDetailsUrl = hat.admin?.details
-        ? uriToHttp(hat.admin?.details)[0]
+      const topHatDetailsUrl = topHat?.details
+        ? uriToHttp(topHat?.details)[0]
         : "";
       const subHatDetailsUrl = hat.details ? uriToHttp(hat.details)[0] : "";
 
-      if (!adminDetailsUrl || !subHatDetailsUrl) {
+      if (!topHatDetailsUrl || !subHatDetailsUrl) {
         throw new Error("Invalid hat details");
       }
 
-      const adminHatDetails = await fetch(adminDetailsUrl).then((res) =>
+      const topHatDetails = await fetch(topHatDetailsUrl).then((res) =>
         res.json()
       );
       const subHatDetails = await fetch(subHatDetailsUrl).then((res) =>
         res.json()
       );
 
-      const adminWearers = hat.admin?.wearers?.map((wearer) => wearer.id);
+      const topHatWearers = topHat?.wearers?.map((wearer) => wearer.id);
 
-      if (!adminWearers?.includes(address.toLowerCase() as `0x${string}`)) {
+      if (!topHatWearers?.includes(address.toLowerCase() as `0x${string}`)) {
         throw new Error("You are not a wearer of this tree's top hat");
       }
 
@@ -171,10 +182,10 @@ export default function Home() {
         imageUrl: hatImageUrl,
         ipId: hatIdDecimalToIp(BigInt(hatId)),
         name: subHatDetails.data.name,
-        topHatDecimalId: hatIdHexToDecimal(hat.admin?.id).toString(),
-        topHatDescription: adminHatDetails.data.description,
-        topHatName: adminHatDetails.data.name,
-        topHatJsonDetails: JSON.stringify(adminHatDetails),
+        topHatDecimalId: hatIdHexToDecimal(topHat?.id).toString(),
+        topHatDescription: topHatDetails.data.description,
+        topHatName: topHatDetails.data.name,
+        topHatJsonDetails: JSON.stringify(topHatDetails),
         wearers: hat.wearers?.map((wearer) => wearer.id) || [],
       };
       setHatDetails(_hatDetails);
