@@ -13,7 +13,9 @@ export type HatDetails = {
   imageUrl: string;
   ipId: string;
   name: string;
+  topHatDecimalId: string;
   topHatDescription: string;
   topHatName: string;
+  topHatJsonDetails: string;
   wearers: string[];
 };

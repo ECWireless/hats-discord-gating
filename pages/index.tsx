@@ -9,13 +9,18 @@ import {
   VStack,
   HStack,
 } from "@chakra-ui/react";
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount, useSignMessage, useWalletClient } from "wagmi";
+import { getPublicClient, http, createConfig } from "@wagmi/core";
 import { createSigner, createGuildClient } from "@guildxyz/sdk";
 import {
   DEFAULT_ENDPOINTS_CONFIG,
   HatsSubgraphClient,
 } from "@hatsprotocol/sdk-v1-subgraph";
-import { hatIdDecimalToIp, hatIdHexToDecimal } from "@hatsprotocol/sdk-v1-core";
+import {
+  hatIdDecimalToIp,
+  hatIdHexToDecimal,
+  HatsClient,
+} from "@hatsprotocol/sdk-v1-core";
 import { sepolia } from "wagmi/chains";
 import { FaExternalLinkAlt, FaCheckCircle } from "react-icons/fa";
 
@@ -40,6 +45,7 @@ import { type GuildDetails, type HatDetails } from "@/utils/types";
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
+  const result = useWalletClient();
 
   const [step, setStep] = useState<number>(0);
 
@@ -50,6 +56,8 @@ export default function Home() {
   const [serverId, setServerId] = useState<string>("");
   const [isCreatingGuild, setIsCreatingGuild] = useState<boolean>(false);
   const [guildDetails, setGuildDetails] = useState<GuildDetails | null>(null);
+  const [isUpdatingTopHatDetails, setIsUpdatingTopHatDetails] =
+    useState<boolean>(false);
 
   const [isBotAdded, setIsBotAdded] = useState<boolean>(false);
 
@@ -129,6 +137,10 @@ export default function Home() {
         },
       });
 
+      if (!hat.admin) {
+        throw new Error("Invalid hat admin");
+      }
+
       const hatImageUrl = hat.imageUri ? uriToHttp(hat.imageUri)[0] : "";
 
       const adminDetailsUrl = hat.admin?.details
@@ -159,8 +171,10 @@ export default function Home() {
         imageUrl: hatImageUrl,
         ipId: hatIdDecimalToIp(BigInt(hatId)),
         name: subHatDetails.data.name,
+        topHatDecimalId: hatIdHexToDecimal(hat.admin?.id).toString(),
         topHatDescription: adminHatDetails.data.description,
         topHatName: adminHatDetails.data.name,
+        topHatJsonDetails: JSON.stringify(adminHatDetails),
         wearers: hat.wearers?.map((wearer) => wearer.id) || [],
       };
       setHatDetails(_hatDetails);
@@ -255,6 +269,89 @@ export default function Home() {
       setIsCreatingGuild(false);
     }
   }, [address, hatDetails, signMessageAsync, storeInLocalStorage]);
+
+  const onUpdateTopHatDetails = useCallback(async () => {
+    try {
+      setIsUpdatingTopHatDetails(true);
+
+      const config = createConfig({
+        chains: [sepolia],
+        transports: {
+          [sepolia.id]: http(),
+        },
+      });
+      const publicClient = getPublicClient(config);
+      if (!publicClient) {
+        throw new Error("Public client not found");
+      }
+
+      if (!result.data) {
+        throw new Error("Wallet client not found");
+      }
+
+      if (!hatDetails) {
+        throw new Error("Please select a hat first");
+      }
+
+      if (!guildDetails) {
+        throw new Error("Please create a guild first");
+      }
+
+      const hatsClient = new HatsClient({
+        chainId: sepolia.id,
+        publicClient,
+        walletClient: result.data,
+      });
+
+      const originalTopHatDetails = JSON.parse(hatDetails.topHatJsonDetails);
+      const originalTopHatGuilds = originalTopHatDetails.data.guilds || [];
+
+      if (originalTopHatGuilds.includes(guildDetails.urlName)) {
+        throw new Error("Guild already exists in top hat");
+      } else {
+        originalTopHatGuilds.push(guildDetails.urlName);
+        originalTopHatDetails.data.guilds = originalTopHatGuilds;
+      }
+
+      const res = await fetch("/api/uploadMetadata?name=hatDetails.json", {
+        method: "POST",
+        body: JSON.stringify(originalTopHatDetails),
+      });
+      if (!res.ok)
+        throw new Error(
+          "Something went wrong uploading your hat new hat details"
+        );
+
+      const { cid } = await res.json();
+
+      const txResult = await hatsClient.changeHatDetails({
+        account: result.data.account,
+        hatId: BigInt(hatDetails.topHatDecimalId),
+        newDetails: `ipfs://${cid}`,
+      });
+
+      if (!txResult) return;
+
+      const { status } = txResult;
+
+      if (status !== "success") {
+        throw new Error("Failed to add guld to top hat");
+      }
+
+      toaster.create({
+        description: "Guild has been added to top hat!",
+        type: "success",
+      });
+    } catch (e) {
+      console.error(e as Error);
+      toaster.create({
+        description: (e as Error).message,
+        type: "error",
+      });
+    } finally {
+      setIsUpdatingTopHatDetails(false);
+    }
+  }, [guildDetails, hatDetails, result]);
 
   const onCreateReward = useCallback(async () => {
     try {
@@ -484,8 +581,8 @@ export default function Home() {
                           <Box w="40px">
                             <svg viewBox="0 0 16 16" focusable="false">
                               <path
-                                fill-rule="evenodd"
-                                clip-rule="evenodd"
+                                fillRule="evenodd"
+                                clipRule="evenodd"
                                 d="M4.99416 6.97535V8.00729L4.00709 8.02078C4.00709 8.02078 4.00459 8.65815 4.00459 8.98991H2.99869V9.9577H1.98764V8.00363H0.999999V14.9771H5.97837V9.98678H7.00751V9.00776H8.98476V9.9789H10.0006V14.9752H15V8.00342H14.0172V9.96519H13.015V9.00625H12.0136V7.99323H11.0083V6.9827H10.0124V3.9933H8.99008V2.95792C8.99008 2.95792 9.68474 2.96253 9.99326 2.96253V1.99065H8.99008V1H7.00648V1.99065H6.00655V2.99836H7.02186L7.02134 3.98593H5.99081C5.99317 4.58091 5.9912 5.17589 5.98922 5.77087C5.98789 6.17237 5.98656 6.57386 5.98656 6.97535H4.99416ZM3.995 11.5045L3.99495 11.864L3.9949 12.4777H3.00979V11.5045H3.995ZM13.0081 11.864L13.0082 11.5045H12.023V12.4777H13.0081L13.0081 11.864ZM7.0219 1.96106H8.97871V2.96877H7.0219V1.96106Z"
                                 fill="black"
                               />
@@ -512,6 +609,24 @@ export default function Home() {
                       Click &quot;Next&quot; to add the Guild.xyz bot to your
                       server.
                     </Text>
+
+                    <Text fontSize="lg" fontWeight={600} mt={8}>
+                      Add Guild to Hat Details (optional)
+                    </Text>
+                    <Text>
+                      Add your new Guild.xyz guild to your top hat details.
+                      While not necessary, it will automatically keep your
+                      Discord-gated authorities up-to-date in the Hats Protocol
+                      dashboard.
+                    </Text>
+                    <Button
+                      loading={isUpdatingTopHatDetails}
+                      onClick={onUpdateTopHatDetails}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Add Guild
+                    </Button>
                   </VStack>
                 ) : (
                   <VStack spaceY={4}>
