@@ -8,6 +8,7 @@ import {
   Text,
   VStack,
   HStack,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { useAccount, useSignMessage, useWalletClient } from "wagmi";
 import { getPublicClient, http, createConfig } from "@wagmi/core";
@@ -48,6 +49,8 @@ export default function Home() {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const result = useWalletClient();
+
+  const desktop = useBreakpointValue({ base: false, md: true });
 
   const [step, setStep] = useState<number>(0);
 
@@ -353,6 +356,12 @@ export default function Home() {
         description: "Guild has been added to top hat!",
         type: "success",
       });
+      const newHatDetails = {
+        ...hatDetails,
+        topHatJsonDetails: JSON.stringify(originalTopHatDetails),
+      };
+      setHatDetails(newHatDetails);
+      storeInLocalStorage(`hatDetails-${address}`, newHatDetails);
     } catch (e) {
       console.error(e as Error);
       toaster.create({
@@ -362,7 +371,7 @@ export default function Home() {
     } finally {
       setIsUpdatingTopHatDetails(false);
     }
-  }, [guildDetails, hatDetails, result]);
+  }, [address, guildDetails, hatDetails, result, storeInLocalStorage]);
 
   const onCreateReward = useCallback(async () => {
     try {
@@ -474,10 +483,10 @@ export default function Home() {
         <Box
           justifyContent="center"
           bgColor="#ffffff80"
-          display="flex"
-          m={10}
+          m={{ base: 4, md: 10 }}
           minH="calc(100vh - 150px)"
-          p={10}
+          p={{ base: 4, md: 10 }}
+          pb={28}
           position="relative"
         >
           {isConnected ? (
@@ -486,6 +495,10 @@ export default function Home() {
               count={4}
               linear
               onStepChange={(e) => setStep(e.step)}
+              orientation={desktop ? "horizontal" : "vertical"}
+              size={{ base: "xs", md: "md" }}
+              spaceX={{ base: 2, md: 0 }}
+              spaceY={{ base: 0, md: 4 }}
               step={step}
             >
               <StepsList>
@@ -496,7 +509,7 @@ export default function Home() {
               </StepsList>
               <StepsContent index={0} spaceY={8}>
                 <VStack>
-                  <Text textAlign="center">
+                  <Text fontSize={{ base: "xs", md: "md" }} textAlign="center">
                     Please paste the hat ID of the tree you would like to
                     connect with Discord. The hat must be minted on the Sepolia
                     test network, and you must be the owner of the tree&apos;s
@@ -534,31 +547,43 @@ export default function Home() {
                       <Box
                         border="1px solid #4A5568"
                         borderRadius="4px"
-                        h="110px"
-                        w="220px"
+                        h={{ base: "90px", md: "110px" }}
+                        w={{ base: "150px", md: "220px" }}
                       >
                         <Box borderBottom="1px solid #4A5568" display="flex">
                           <ChakraImage
                             alt="Hat Image"
-                            height="75px"
+                            height={{ base: "60px", md: "75px" }}
                             src={hatDetails.imageUrl}
-                            width="75px"
+                            width={{ base: "60px", md: "75px" }}
                           />
                           <Box p={2}>
                             <Text fontSize="xs" fontWeight={500}>
                               {hatDetails.ipId}
                             </Text>
-                            <Text fontWeight={500}>{hatDetails.name}</Text>
+                            <Text
+                              fontSize={{ base: "xs", md: "md" }}
+                              fontWeight={500}
+                            >
+                              {hatDetails.name}
+                            </Text>
                           </Box>
                         </Box>
                         <Box px={2} py={1}>
-                          <Text color="#323131" fontWeight={600}>
+                          <Text
+                            color="#323131"
+                            fontSize={{ base: "xs", md: "md" }}
+                            fontWeight={600}
+                          >
                             {hatDetails.wearers.length} Wearer
                             {hatDetails.wearers.length > 1 ? "s" : ""}
                           </Text>
                         </Box>
                       </Box>
-                      <Text>
+                      <Text
+                        fontSize={{ base: "xs", md: "md" }}
+                        textAlign="center"
+                      >
                         Click &quot;Next&quot; to connect your tree to Discord.
                       </Text>
                     </VStack>
@@ -574,12 +599,12 @@ export default function Home() {
                     <Box
                       border="1px solid #4A5568"
                       borderRadius="4px"
-                      w="250px"
+                      w={{ base: "150px", md: "250px" }}
                     >
                       <HStack
                         borderBottom="1px solid #4A5568"
                         display="flex"
-                        p={4}
+                        p={{ base: 1, md: 4 }}
                       >
                         {guildDetails.imageUrl ? (
                           <ChakraImage
@@ -589,7 +614,7 @@ export default function Home() {
                             width="75px"
                           />
                         ) : (
-                          <Box w="40px">
+                          <Box w={{ base: "25px", md: "40px" }}>
                             <svg viewBox="0 0 16 16" focusable="false">
                               <path
                                 fillRule="evenodd"
@@ -600,10 +625,16 @@ export default function Home() {
                             </svg>
                           </Box>
                         )}
-                        <Box p={2}>
-                          <Text fontWeight={500}>{guildDetails.name}</Text>
+                        <Box p={{ base: 0, md: 2 }}>
+                          <Text
+                            fontSize={{ base: "xs", md: "md" }}
+                            fontWeight={500}
+                          >
+                            {guildDetails.name}
+                          </Text>
                           <Link
                             color="blue"
+                            fontSize={{ base: "xs", md: "md" }}
                             href={`https://guild.xyz/${guildDetails.urlName}`}
                             rel="noreferrer"
                             target="_blank"
@@ -613,18 +644,34 @@ export default function Home() {
                         </Box>
                       </HStack>
                       <Box p={2}>
-                        <Text color="#323131">{guildDetails.description}</Text>
+                        <Text
+                          color="#323131"
+                          fontSize={{ base: "xs", md: "md" }}
+                        >
+                          {guildDetails.description}
+                        </Text>
                       </Box>
                     </Box>
-                    <Text>
+                    <Text
+                      fontSize={{ base: "xs", md: "md" }}
+                      textAlign="center"
+                    >
                       Click &quot;Next&quot; to add the Guild.xyz bot to your
                       server.
                     </Text>
 
-                    <Text fontSize="lg" fontWeight={600} mt={8}>
+                    <Text
+                      fontSize={{ base: "md", md: "lg" }}
+                      fontWeight={600}
+                      mt={8}
+                      textAlign="center"
+                    >
                       Add Guild to Hat Details (optional)
                     </Text>
-                    <Text>
+                    <Text
+                      fontSize={{ base: "xs", md: "md" }}
+                      textAlign="center"
+                    >
                       Add your new Guild.xyz guild to your top hat details.
                       While not necessary, it will automatically keep your
                       Discord-gated authorities up-to-date in the Hats Protocol
@@ -641,7 +688,10 @@ export default function Home() {
                   </VStack>
                 ) : (
                   <VStack spaceY={4}>
-                    <Text textAlign="center">
+                    <Text
+                      fontSize={{ base: "xs", md: "md" }}
+                      textAlign="center"
+                    >
                       In order to connect your tree to Discord, you will need to
                       create a guild on Guild.xyz. Clicking &quot;Create
                       Guild&quot; below will create a guild based on your hat
@@ -661,7 +711,7 @@ export default function Home() {
               </StepsContent>
               <StepsContent index={2} spaceY={8}>
                 <VStack spaceY={2}>
-                  <Text>
+                  <Text fontSize={{ base: "xs", md: "md" }} textAlign="center">
                     Make sure that the Guild.xyz bot is a member of your Discord
                     server, so that it will be able to manage your roles.
                   </Text>
@@ -680,6 +730,7 @@ export default function Home() {
                       setIsBotAdded(!!e.checked);
                       storeInLocalStorage(`botAdded-${address}`, e.checked);
                     }}
+                    size={{ base: "xs", md: "md" }}
                     variant="subtle"
                   >
                     I have added the Guild.xyz bot to my server
@@ -688,11 +739,11 @@ export default function Home() {
               </StepsContent>
               <StepsContent index={3} spaceY={8}>
                 <VStack spaceY={2} textAlign="center">
-                  <Text>
+                  <Text fontSize={{ base: "xs", md: "md" }}>
                     The final step is associating your hat with a Discord role.
                     To do this, you will need your server ID and role ID.
                   </Text>
-                  <Text>
+                  <Text fontSize={{ base: "xs", md: "md" }}>
                     To get your server ID, go to any channel in your Discord
                     server, and copy the first set of numbers in the URL.{" "}
                     <strong>
@@ -701,10 +752,11 @@ export default function Home() {
                   </Text>
                   <ChakraImage
                     alt="Discord IDs Example"
-                    height={50}
+                    height={{ base: "auto", md: 50 }}
                     src="/discord_ids.png"
+                    w={{ base: "100%", md: "auto" }}
                   />
-                  <Text>
+                  <Text fontSize={{ base: "xs", md: "md" }}>
                     To get your Discord role ID, go into any Discord channel and
                     post a message with the role tag preceded by a backslash.
                     For example, if your role is called &quot;Member&quot;, you
@@ -713,7 +765,7 @@ export default function Home() {
                     number. Copy and paste it below.
                   </Text>
                 </VStack>
-                <VStack pb={16} spaceY={2}>
+                <VStack pb={{ base: 0, md: 16 }} spaceY={2}>
                   <Field
                     label="Server ID"
                     invalid={false}
