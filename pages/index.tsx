@@ -17,7 +17,7 @@ import {
 } from "@hatsprotocol/sdk-v1-subgraph";
 import { hatIdDecimalToIp, hatIdHexToDecimal } from "@hatsprotocol/sdk-v1-core";
 import { sepolia } from "wagmi/chains";
-import { FaExternalLinkAlt } from "react-icons/fa";
+import { FaExternalLinkAlt, FaCheckCircle } from "react-icons/fa";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Toaster, toaster } from "@/components/ui/toaster";
@@ -164,10 +164,6 @@ export default function Home() {
           hideFromExplorer: false,
           roles: [
             {
-              name: "Basic Member",
-              requirements: [{ type: "FREE" }],
-            },
-            {
               name: hatDetails.name,
               description: hatDetails.description,
               requirements: [
@@ -270,6 +266,7 @@ export default function Home() {
         type: "success",
       });
       setIsRewardCreated(true);
+      setStep(4);
     } catch (e) {
       console.error(e as Error);
       toaster.create({
@@ -298,7 +295,7 @@ export default function Home() {
       return !isRewardCreated;
     }
 
-    return false;
+    return step === 4;
   }, [guildDetails, hatDetails, isBotAdded, isRewardCreated, step]);
 
   return (
@@ -569,7 +566,14 @@ export default function Home() {
                   </Button>
                 </VStack>
               </StepsContent>
-              <StepsCompletedContent>Complete!</StepsCompletedContent>
+              <StepsCompletedContent h="100%">
+                <HStack h="100%" justifyContent="center">
+                  <FaCheckCircle color="green" size="40px" />
+                  <Text>
+                    You have successfully gated Discord through Hats Protocol!
+                  </Text>
+                </HStack>
+              </StepsCompletedContent>
               <Group alignSelf="center" bottom={10} mt={4} position="absolute">
                 <StepsPrevTrigger asChild>
                   <Button size="sm" variant="outline">
