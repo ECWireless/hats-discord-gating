@@ -19,6 +19,8 @@ import { hatIdDecimalToIp } from "@hatsprotocol/sdk-v1-core";
 import { sepolia } from "wagmi/chains";
 import { FaExternalLinkAlt } from "react-icons/fa";
 
+import { Checkbox } from "@/components/ui/checkbox";
+import { Status } from "@/components/ui/status";
 import { Toaster, toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -50,6 +52,8 @@ export default function Home() {
   const [inviteChannelId, setInviteChannelId] = useState<string>("");
   const [isCreatingGuild, setIsCreatingGuild] = useState<boolean>(false);
   const [guildDetails, setGuildDetails] = useState<GuildDetails | null>(null);
+
+  const [isBotAdded, setIsBotAdded] = useState<boolean>(false);
 
   const onSearch = useCallback(async () => {
     try {
@@ -190,8 +194,17 @@ export default function Home() {
     if (step === 0) {
       return !hatDetails;
     }
-    return !guildDetails;
-  }, [guildDetails, hatDetails, step]);
+
+    if (step === 1) {
+      return !guildDetails;
+    }
+
+    if (step === 2) {
+      return !isBotAdded;
+    }
+
+    return false;
+  }, [guildDetails, hatDetails, isBotAdded, step]);
 
   return (
     <>
@@ -298,6 +311,11 @@ export default function Home() {
                 )}
               </StepsContent>
               <StepsContent index={1} spaceY={8}>
+                <Status value={guildDetails ? "success" : "warning"}>
+                  {guildDetails
+                    ? "Connected to Guild.xyz"
+                    : "Not connected to Guild.xyz"}
+                </Status>
                 {guildDetails ? (
                   <VStack>
                     <Text fontSize="lg" fontWeight={600}>
@@ -418,7 +436,30 @@ export default function Home() {
                   </>
                 )}
               </StepsContent>
-              <StepsContent index={2}>Add Bot</StepsContent>
+              <StepsContent index={2} spaceY={8}>
+                <VStack spaceY={2}>
+                  <Text>
+                    Make sure that the Guild.xyz bot is a member of your Discord
+                    server, so that it will be able to manage your roles.
+                  </Text>
+                  <Link
+                    color="blue"
+                    href="https://discord.com/oauth2/authorize?client_id=868172385000509460&permissions=268716145&scope=bot%20applications.commands"
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Add Guild.xyz bot
+                    <FaExternalLinkAlt />
+                  </Link>
+                  <Checkbox
+                    checked={isBotAdded}
+                    onCheckedChange={(e) => setIsBotAdded(!!e.checked)}
+                    variant="subtle"
+                  >
+                    I have added the Guild.xyz bot to my server
+                  </Checkbox>
+                </VStack>
+              </StepsContent>
               <StepsContent index={3}>Create Role</StepsContent>
               <StepsCompletedContent>Complete!</StepsCompletedContent>
               <Group alignSelf="center" bottom={10} mt={4} position="absolute">
