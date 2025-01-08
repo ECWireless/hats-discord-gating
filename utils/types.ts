@@ -8,7 +8,7 @@ export type GuildDetails = {
 };
 
 export type HatDetails = {
-  decimalId: bigint;
+  decimalId: string;
   description: string;
   imageUrl: string;
   ipId: string;

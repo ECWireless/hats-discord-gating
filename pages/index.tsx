@@ -33,7 +33,7 @@ import {
   StepsRoot,
 } from "@/components/ui/steps";
 import { Header } from "@/components/Header";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { uriToHttp } from "@/utils/helpers";
 import { type GuildDetails, type HatDetails } from "@/utils/types";
 
@@ -56,6 +56,44 @@ export default function Home() {
   const [roleId, setRoleId] = useState<string>("");
   const [isCreatingReward, setIsCreatingReward] = useState<boolean>(false);
   const [isRewardCreated, setIsRewardCreated] = useState<boolean>(false);
+
+  const storeInLocalStorage = useCallback((key: string, data: unknown) => {
+    localStorage.setItem(key, JSON.stringify(data));
+  }, []);
+
+  const getFromLocalStorage = useCallback((key: string) => {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  }, []);
+
+  useEffect(() => {
+    const _hatDetails = getFromLocalStorage(`hatDetails-${address}`);
+    const _guildDetails = getFromLocalStorage(`guildDetails-${address}`);
+    const _botAdded = getFromLocalStorage(`botAdded-${address}`);
+    const _rewardDetails = getFromLocalStorage(`rewardDetails-${address}`);
+
+    if (_hatDetails) {
+      setHatDetails(_hatDetails);
+      setStep(0);
+    }
+
+    if (_guildDetails) {
+      setGuildDetails(_guildDetails);
+      setStep(1);
+    }
+
+    if (_botAdded) {
+      setIsBotAdded(_botAdded);
+      setStep(2);
+    }
+
+    if (_rewardDetails) {
+      setIsRewardCreated(true);
+      setServerId(_rewardDetails.serverId);
+      setRoleId(_rewardDetails.roleId);
+      setStep(4);
+    }
+  }, [address, getFromLocalStorage]);
 
   const onSearch = useCallback(async () => {
     try {
@@ -116,7 +154,7 @@ export default function Home() {
       }
 
       const _hatDetails = {
-        decimalId: hatIdHexToDecimal(hat.id),
+        decimalId: hatIdHexToDecimal(hat.id).toString(),
         description: subHatDetails.data.description,
         imageUrl: hatImageUrl,
         ipId: hatIdDecimalToIp(BigInt(hatId)),
@@ -126,6 +164,7 @@ export default function Home() {
         wearers: hat.wearers?.map((wearer) => wearer.id) || [],
       };
       setHatDetails(_hatDetails);
+      storeInLocalStorage(`hatDetails-${address}`, _hatDetails);
     } catch (e) {
       console.error(e as Error);
       toaster.create({
@@ -135,7 +174,7 @@ export default function Home() {
     } finally {
       setIsSearching(false);
     }
-  }, [address, hatId]);
+  }, [address, hatId, storeInLocalStorage]);
 
   const onCreateGuild = useCallback(async () => {
     try {
@@ -171,7 +210,7 @@ export default function Home() {
                   address: "0x3bc1a0ad72417f2d411118085256fc53cbddd137",
                   chain: "SEPOLIA",
                   data: {
-                    ids: [hatDetails.decimalId.toString()],
+                    ids: [hatDetails.decimalId],
                   },
                   type: "ERC1155",
                 },
@@ -200,6 +239,7 @@ export default function Home() {
         urlName: myGuild.urlName,
       };
       setGuildDetails(_guildDetails);
+      storeInLocalStorage(`guildDetails-${address}`, _guildDetails);
 
       toaster.create({
         description: "Guild created successfully!",
@@ -214,7 +254,7 @@ export default function Home() {
     } finally {
       setIsCreatingGuild(false);
     }
-  }, [address, hatDetails, signMessageAsync]);
+  }, [address, hatDetails, signMessageAsync, storeInLocalStorage]);
 
   const onCreateReward = useCallback(async () => {
     try {
@@ -266,6 +306,11 @@ export default function Home() {
         type: "success",
       });
       setIsRewardCreated(true);
+      storeInLocalStorage(`rewardDetails-${address}`, {
+        guildRoleId: guildDetails.guildRoleId,
+        roleId,
+        serverId,
+      });
       setStep(4);
     } catch (e) {
       console.error(e as Error);
@@ -276,7 +321,14 @@ export default function Home() {
     } finally {
       setIsCreatingReward(false);
     }
-  }, [address, guildDetails, roleId, serverId, signMessageAsync]);
+  }, [
+    address,
+    guildDetails,
+    roleId,
+    serverId,
+    signMessageAsync,
+    storeInLocalStorage,
+  ]);
 
   const isStepDisabled = useMemo(() => {
     if (step === 0) {
@@ -498,7 +550,10 @@ export default function Home() {
                   </Link>
                   <Checkbox
                     checked={isBotAdded}
-                    onCheckedChange={(e) => setIsBotAdded(!!e.checked)}
+                    onCheckedChange={(e) => {
+                      setIsBotAdded(!!e.checked);
+                      storeInLocalStorage(`botAdded-${address}`, e.checked);
+                    }}
                     variant="subtle"
                   >
                     I have added the Guild.xyz bot to my server
