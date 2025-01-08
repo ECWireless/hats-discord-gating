@@ -20,7 +20,6 @@ import { sepolia } from "wagmi/chains";
 import { FaExternalLinkAlt } from "react-icons/fa";
 
 import { Checkbox } from "@/components/ui/checkbox";
-import { Status } from "@/components/ui/status";
 import { Toaster, toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -49,11 +48,14 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
   const [serverId, setServerId] = useState<string>("");
-  const [inviteChannelId, setInviteChannelId] = useState<string>("");
   const [isCreatingGuild, setIsCreatingGuild] = useState<boolean>(false);
   const [guildDetails, setGuildDetails] = useState<GuildDetails | null>(null);
 
   const [isBotAdded, setIsBotAdded] = useState<boolean>(false);
+
+  const [roleId, setRoleId] = useState<string>("");
+  const [isCreatingReward, setIsCreatingReward] = useState<boolean>(false);
+  const [isRewardCreated, setIsRewardCreated] = useState<boolean>(false);
 
   const onSearch = useCallback(async () => {
     try {
@@ -143,10 +145,6 @@ export default function Home() {
         throw new Error("Wallet not connected");
       }
 
-      if (!serverId || !inviteChannelId) {
-        throw new Error("Please enter a valid server ID and invite channel ID");
-      }
-
       if (!hatDetails) {
         throw new Error("Please select a hat first");
       }
@@ -164,13 +162,6 @@ export default function Home() {
           description: hatDetails.topHatDescription,
           showMembers: true,
           hideFromExplorer: false,
-          guildPlatforms: [
-            {
-              platformName: "DISCORD",
-              platformGuildId: serverId,
-              platformGuildData: { inviteChannel: inviteChannelId },
-            },
-          ],
           roles: [
             {
               name: "Basic Member",
@@ -196,8 +187,17 @@ export default function Home() {
         signerFunction
       );
 
+      const guildRoleId = myGuild.roles.find(
+        (role) => role.name === hatDetails.name
+      )?.id;
+
+      if (!guildRoleId) {
+        throw new Error("Guild role not found");
+      }
+
       const _guildDetails = {
         description: myGuild.description,
+        guildRoleId,
         id: myGuild.id,
         imageUrl: myGuild.imageUrl,
         name: myGuild.name,
@@ -209,13 +209,6 @@ export default function Home() {
         description: "Guild created successfully!",
         type: "success",
       });
-
-      await guildClient.guild.join(myGuild.id, signerFunction);
-
-      toaster.create({
-        description: "Joined guild successfully!",
-        type: "success",
-      });
     } catch (e) {
       console.error(e as Error);
       toaster.create({
@@ -225,7 +218,68 @@ export default function Home() {
     } finally {
       setIsCreatingGuild(false);
     }
-  }, [address, hatDetails, inviteChannelId, serverId, signMessageAsync]);
+  }, [address, hatDetails, signMessageAsync]);
+
+  const onCreateReward = useCallback(async () => {
+    try {
+      setIsCreatingReward(true);
+
+      if (!address) {
+        throw new Error("Wallet not connected");
+      }
+
+      if (!guildDetails) {
+        throw new Error("No guild found");
+      }
+
+      if (!serverId) {
+        throw new Error("Please enter a valid server ID");
+      }
+
+      if (!roleId) {
+        throw new Error("Please enter a valid role ID");
+      }
+
+      const guildClient = createGuildClient("Hats Protocol Discord Gating");
+      const signerFunction = createSigner.custom(
+        (message) => signMessageAsync({ message }),
+        address
+      );
+
+      const {
+        guild: {
+          role: { reward: rewardClient },
+        },
+      } = guildClient;
+
+      await rewardClient.create(
+        guildDetails.urlName,
+        guildDetails.guildRoleId,
+        {
+          guildPlatform: {
+            platformName: "DISCORD",
+            platformGuildId: serverId,
+          },
+          platformRoleId: roleId,
+        },
+        signerFunction
+      );
+
+      toaster.create({
+        description: "Role created successfully!",
+        type: "success",
+      });
+      setIsRewardCreated(true);
+    } catch (e) {
+      console.error(e as Error);
+      toaster.create({
+        description: (e as Error).message,
+        type: "error",
+      });
+    } finally {
+      setIsCreatingReward(false);
+    }
+  }, [address, guildDetails, roleId, serverId, signMessageAsync]);
 
   const isStepDisabled = useMemo(() => {
     if (step === 0) {
@@ -240,8 +294,12 @@ export default function Home() {
       return !isBotAdded;
     }
 
+    if (step === 3) {
+      return !isRewardCreated;
+    }
+
     return false;
-  }, [guildDetails, hatDetails, isBotAdded, step]);
+  }, [guildDetails, hatDetails, isBotAdded, isRewardCreated, step]);
 
   return (
     <>
@@ -275,16 +333,19 @@ export default function Home() {
             >
               <StepsList>
                 <StepsItem index={0} title="Select Hat" />
-                <StepsItem index={1} title="Install Discord-gating" />
+                <StepsItem index={1} title="Create Guild" />
                 <StepsItem index={2} title="Add Bot" />
                 <StepsItem index={3} title="Create Role" />
               </StepsList>
               <StepsContent index={0} spaceY={8}>
-                <Text>
-                  Please paste the hat ID of the tree you would like to connect
-                  with Discord. The hat must be minted on the Sepolia test
-                  network, and you must be the owner of the tree&apos;s top hat.
-                </Text>
+                <VStack>
+                  <Text textAlign="center">
+                    Please paste the hat ID of the tree you would like to
+                    connect with Discord. The hat must be minted on the Sepolia
+                    test network, and you must be the owner of the tree&apos;s
+                    top hat.
+                  </Text>
+                </VStack>
                 <VStack spaceY={2}>
                   <Field
                     label="Hat ID"
@@ -348,11 +409,6 @@ export default function Home() {
                 )}
               </StepsContent>
               <StepsContent index={1} spaceY={8}>
-                <Status value={guildDetails ? "success" : "warning"}>
-                  {guildDetails
-                    ? "Connected to Guild.xyz"
-                    : "Not connected to Guild.xyz"}
-                </Status>
                 {guildDetails ? (
                   <VStack>
                     <Text fontSize="lg" fontWeight={600}>
@@ -409,68 +465,23 @@ export default function Home() {
                     </Text>
                   </VStack>
                 ) : (
-                  <>
-                    <VStack alignItems="start" spaceY={2}>
-                      <Text>
-                        In order to connect your tree to Discord, you will need
-                        to create a guild on Guild.xyz. To do so you, you will
-                        need to paste your Discord server ID and the welcome
-                        channel ID of that server.{" "}
-                        <strong>
-                          You must have admin privileges in your Discord server.
-                        </strong>
-                      </Text>
-                      <Text>
-                        To get your server ID, go to the welcome channel of your
-                        Discord server, and copy the first set of numbers in the
-                        URL. The welcome channel ID will be the second set of
-                        numbers in the URL.
-                      </Text>
-                      <ChakraImage
-                        alt="Discord IDs Example"
-                        height={50}
-                        src="/discord_ids.png"
-                      />
-                      <Text>
-                        When you click &quot;Create Guild&quot;, you will be
-                        prompted to sign a message to create the guild, as well
-                        a second message to join the guild.
-                      </Text>
-                    </VStack>
-                    <VStack pb={16} spaceY={2}>
-                      <Field
-                        label="Server ID"
-                        invalid={false}
-                        errorText="This is error text"
-                      >
-                        <Input
-                          disabled={isCreatingGuild}
-                          onChange={(e) => setServerId(e.target.value)}
-                          value={serverId}
-                        />
-                      </Field>
-                      <Field
-                        label="Invite Channel ID"
-                        invalid={false}
-                        errorText="This is error text"
-                      >
-                        <Input
-                          disabled={isCreatingGuild}
-                          onChange={(e) => setInviteChannelId(e.target.value)}
-                          value={inviteChannelId}
-                        />
-                      </Field>
-                      <Button
-                        disabled={!serverId || !inviteChannelId}
-                        loading={isCreatingGuild}
-                        onClick={onCreateGuild}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Create Guild
-                      </Button>
-                    </VStack>
-                  </>
+                  <VStack spaceY={4}>
+                    <Text textAlign="center">
+                      In order to connect your tree to Discord, you will need to
+                      create a guild on Guild.xyz. Clicking &quot;Create
+                      Guild&quot; below will create a guild based on your hat
+                      tree&apos;s data. This will require you to sign a message
+                      with your wallet.
+                    </Text>
+                    <Button
+                      loading={isCreatingGuild}
+                      onClick={onCreateGuild}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Create Guild
+                    </Button>
+                  </VStack>
                 )}
               </StepsContent>
               <StepsContent index={2} spaceY={8}>
@@ -497,7 +508,67 @@ export default function Home() {
                   </Checkbox>
                 </VStack>
               </StepsContent>
-              <StepsContent index={3}>Create Role</StepsContent>
+              <StepsContent index={3} spaceY={8}>
+                <VStack spaceY={2} textAlign="center">
+                  <Text>
+                    The final step is associating your hat with a Discord role.
+                    To do this, you will need your server ID and role ID.
+                  </Text>
+                  <Text>
+                    To get your server ID, go to any channel in your Discord
+                    server, and copy the first set of numbers in the URL.{" "}
+                    <strong>
+                      You must have admin privileges in your Discord server.
+                    </strong>
+                  </Text>
+                  <ChakraImage
+                    alt="Discord IDs Example"
+                    height={50}
+                    src="/discord_ids.png"
+                  />
+                  <Text>
+                    To get your Discord role ID, go into any Discord channel and
+                    post a message with the role tag preceded by a backslash.
+                    For example, if your role is called &quot;Member&quot;, you
+                    would type &quot;\@Member&quot; in the channel. When the
+                    message posts, it will be replace the role name with the ID
+                    number. Copy and paste it below.
+                  </Text>
+                </VStack>
+                <VStack pb={16} spaceY={2}>
+                  <Field
+                    label="Server ID"
+                    invalid={false}
+                    errorText="This is error text"
+                  >
+                    <Input
+                      disabled={isCreatingReward}
+                      onChange={(e) => setServerId(e.target.value)}
+                      value={serverId}
+                    />
+                  </Field>
+                  <Field
+                    label="Role ID"
+                    invalid={false}
+                    errorText="This is error text"
+                  >
+                    <Input
+                      disabled={isCreatingReward}
+                      onChange={(e) => setRoleId(e.target.value)}
+                      value={roleId}
+                    />
+                  </Field>
+                  <Button
+                    disabled={!serverId || !roleId}
+                    loading={isCreatingReward}
+                    onClick={onCreateReward}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Link Role
+                  </Button>
+                </VStack>
+              </StepsContent>
               <StepsCompletedContent>Complete!</StepsCompletedContent>
               <Group alignSelf="center" bottom={10} mt={4} position="absolute">
                 <StepsPrevTrigger asChild>

@@ -1,5 +1,6 @@
 export type GuildDetails = {
   description: string;
+  guildRoleId: number;
   id: number;
   imageUrl: string;
   name: string;
